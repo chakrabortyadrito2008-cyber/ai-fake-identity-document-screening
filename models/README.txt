@@ -1,0 +1,1 @@
+Place only locally approved, licence-reviewed model files here. Each activated model must have a manifest recording name, version, SHA-256, source, licence, input requirements and output semantics. The baseline intentionally reports model-dependent features as UNAVAILABLE until this condition is met.

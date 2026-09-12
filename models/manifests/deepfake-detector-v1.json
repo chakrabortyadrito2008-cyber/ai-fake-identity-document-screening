@@ -1,0 +1,13 @@
+{
+  "name": "Deepfake Detector v1 (SigLIP ONNX)",
+  "version": "v1",
+  "type": "deepfake_image_classification",
+  "path": "models/deepfake/deepfake_detector_v1_complete.onnx",
+  "sha256": "b9d938df75f98fdb3367981a2398f1f89e9c6413a7edb06935bc4a6f563ecb49",
+  "source": "https://huggingface.co/pranjal-pravesh/prithivML-deepfake-detector-model-v1",
+  "license": "Apache-2.0 (repository card; retain attribution and verify before redistribution)",
+  "runtime": "onnxruntime CPUExecutionProvider",
+  "input": "RGB, 224x224; rescale 1/255; normalize (x-0.5)/0.5",
+  "output": "two logits ordered [fake, real]",
+  "risk_policy": "Flag only at fake probability >= 0.80; supporting evidence, not an identity or authenticity verdict."
+}

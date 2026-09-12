@@ -1,0 +1,1 @@
+[{"case_id":"synthetic-cross-identity-reuse","ground_truth":"CONFIRMED_FRAUD","reason":"same SHA attached to distinct synthetic identities","source":"synthetic","confidence":1.0}]

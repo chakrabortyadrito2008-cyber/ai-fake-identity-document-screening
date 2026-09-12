@@ -1,0 +1,13 @@
+{
+  "name": "face_detection_yunet_2023mar",
+  "type": "face_detection",
+  "version": "2023mar",
+  "path": "models/face_detection/face_detection_yunet_2023mar.onnx",
+  "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+  "source": "https://huggingface.co/opencv/opencv_zoo/tree/main/models/face_detection_yunet",
+  "license": "MIT; retain model-directory LICENSE and attribution",
+  "input": "BGR image; OpenCV FaceDetectorYN sets the image size per inference",
+  "output_semantics": "Face bounding boxes, five landmarks, and detector confidence; detection is not identity authentication.",
+  "device": "CPU",
+  "integrity_verified_at_install": true
+}

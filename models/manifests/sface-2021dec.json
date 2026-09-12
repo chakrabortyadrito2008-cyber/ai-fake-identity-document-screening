@@ -1,0 +1,12 @@
+{
+  "name": "face_recognition_sface_2021dec",
+  "type": "face_embedding",
+  "version": "2021dec",
+  "path": "models/face_recognition/face_recognition_sface_2021dec.onnx",
+  "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+  "source": "https://huggingface.co/opencv/opencv_zoo/tree/main/models/face_recognition_sface",
+  "license": "Apache-2.0; research/SIH evaluation use",
+  "input": "Aligned BGR face crop, 112x112",
+  "output_semantics": "128-dimensional embedding; cosine similarity supports screening only, not identity authentication.",
+  "device": "CPU"
+}

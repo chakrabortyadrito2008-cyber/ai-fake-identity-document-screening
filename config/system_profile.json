@@ -1,0 +1,19 @@
+{
+  "project_title": "AI-Based Fake Identity & Document Screening System",
+  "purpose": "Human-in-the-loop screening for suspicious identity documents, synthetic or manipulated document imagery, presentation attacks, document reuse, and identity inconsistencies.",
+  "screening_outputs": [
+    "LIKELY GENUINE — NOT VERIFIED",
+    "NEEDS MANUAL VERIFICATION",
+    "LIKELY FAKE / FRAUD SIGNALS"
+  ],
+  "operating_principle": "Evidence is fused into a screening recommendation. Final identity acceptance, rejection, or issuer authentication remains a qualified human or authorised issuer decision.",
+  "primary_capabilities": [
+    "Secure upload and document quality gating",
+    "OCR, field extraction and document-type/layout checks",
+    "Aadhaar layout consistency and QR-content checks",
+    "Image forensics, deepfake screening and anomaly signals",
+    "Face detection, optional document-to-reference comparison and separate-capture PAD readiness",
+    "Fingerprinting, provenance, duplicate/reuse and temporal analysis",
+    "Explainable risk drivers, reviewer queue and tamper-evident receipt"
+  ]
+}

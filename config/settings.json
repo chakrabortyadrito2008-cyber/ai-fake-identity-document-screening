@@ -1,0 +1,20 @@
+{
+  "version": "1.2.0",
+  "database_path": "data/fraud_detection.sqlite3",
+  "supported_extensions": [".png", ".jpg", ".jpeg", ".webp", ".pdf"],
+  "max_file_bytes": 10485760,
+  "max_pixels": 40000000,
+  "quality": {"min_width": 500, "min_height": 300, "blur_variance_min": 45.0, "brightness_min": 35.0, "brightness_max": 225.0, "contrast_min": 18.0, "hard_failure_count": 3},
+  "ocr": {"languages": "eng", "psm": [6, 11]},
+  "risk": {"review_threshold": 25.0, "high_threshold": 60.0, "max_single_evidence": 38.0},
+  "phash_distance_threshold": 8,
+  "features": {"ocr": true, "qr": true, "forensics": true, "graph": true, "trusted_source": true, "face_detection": true, "face_match": true, "liveness": true, "deepfake": true, "document_anomaly": true},
+  "face_matching": {"cosine_match_threshold": 0.363},
+  "trusted_source_path": "data/demo/approved_records_demo.json",
+  "trusted_source_mode": "DEMO_ONLY",
+  "anomaly_baseline_path": "data/demo/document_anomaly_baseline.json",
+  "api": {"require_api_key": false, "rate_limit_per_minute": 60, "max_batch_size": 25},
+  "processing": {"max_ocr_variants": 2, "max_graph_nodes": 1000, "upload_directory": "data/uploads", "max_pdf_pages": 5, "pdf_render_dpi": 150},
+  "models": {"yunet": {"type": "face_detection", "path": "models/face_detection/face_detection_yunet_2023mar.onnx", "version": "2023mar", "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4", "source": "https://huggingface.co/opencv/opencv_zoo/tree/main/models/face_detection_yunet", "license": "MIT; retain model-directory LICENSE and attribution", "input": "BGR image", "output": "bounding boxes and confidences", "device": "CPU"}, "sface": {"type": "face_embedding", "path": "models/face_recognition/face_recognition_sface_2021dec.onnx", "version": "2021dec", "sha256": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79", "source": "https://huggingface.co/opencv/opencv_zoo/tree/main/models/face_recognition_sface", "license": "Apache-2.0; research/SIH evaluation use", "input": "aligned BGR face crop, 112x112", "output": "128-dimensional face embedding", "device": "CPU"}, "minifasnet_v2": {"type": "presentation_attack_detection", "path": "models/liveness/minifasnet_v2.onnx", "version": "2.7_80x80", "sha256": "d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b", "source": "https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx", "license": "Apache-2.0", "input": "BGR face crop, 80x80", "output": "softmax [live, print_attack, replay_attack]", "device": "CPU"}, "deepfake_detector_v1": {"type": "deepfake_image_classification", "path": "models/deepfake/deepfake_detector_v1_complete.onnx", "version": "v1", "sha256": "b9d938df75f98fdb3367981a2398f1f89e9c6413a7edb06935bc4a6f563ecb49", "source": "https://huggingface.co/pranjal-pravesh/prithivML-deepfake-detector-model-v1", "license": "Apache-2.0 (repository card; retain attribution and verify before redistribution)", "input": "RGB, 224x224; rescale 1/255; (x-0.5)/0.5", "output": "logits [fake, real]", "device": "CPU"}},
+  "retention_days": 365
+}

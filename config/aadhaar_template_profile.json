@@ -1,0 +1,14 @@
+{
+  "profile_id": "eaadhaar_landscape_v1",
+  "source": "Privacy-preserving layout profile derived from a user-provided verified e-Aadhaar reference. No holder image, Aadhaar number, name, DOB, or other personal data is stored.",
+  "expected_aspect_ratio": 1.606,
+  "aspect_ratio_tolerance": 0.3,
+  "marker_groups": [
+    ["AADHAAR", "AADHAR", "UIDAI"],
+    ["GOVERNMENT OF INDIA", "GOVERNMENT", "BHARAT SARKAR"],
+    ["DATE OF BIRTH", "DOB"],
+    ["PROOF OF IDENTITY", "AADHAAR IS PROOF"]
+  ],
+  "minimum_marker_groups": 2,
+  "expected_face_region": [0.05, 0.15, 0.38, 0.72]
+}

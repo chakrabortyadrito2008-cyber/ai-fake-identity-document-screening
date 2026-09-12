@@ -1,0 +1,10 @@
+{
+  "baseline_version": "demo-statistical-v1",
+  "mode": "DEMO_ONLY",
+  "source": "Simulated well-captured document quality distribution; not suitable for deployment decisions.",
+  "feature_names": ["brightness", "contrast", "log_blur", "edge_density", "aspect_ratio"],
+  "mean": [0.72, 0.23, 5.4, 0.12, 1.55],
+  "std": [0.16, 0.12, 1.25, 0.10, 0.45],
+  "anomaly_threshold": 2.8,
+  "sample_count": 500
+}

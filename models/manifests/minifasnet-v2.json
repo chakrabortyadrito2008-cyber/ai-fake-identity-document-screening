@@ -1,0 +1,12 @@
+{
+  "name": "minifasnet_v2",
+  "type": "presentation_attack_detection",
+  "version": "2.7_80x80",
+  "path": "models/liveness/minifasnet_v2.onnx",
+  "sha256": "d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b",
+  "source": "https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx",
+  "license": "Apache-2.0",
+  "input": "BGR face crop, normalized to 80x80",
+  "output_semantics": "Three-class scores: live, print attack, replay attack. A single image result is supporting PAD evidence, not proof of liveness.",
+  "device": "CPU"
+}

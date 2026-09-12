@@ -1,0 +1,16 @@
+[
+  {
+    "identity_key": "demo-legitimate-001",
+    "source": "SIH demonstration registry",
+    "confidence": 1.0,
+    "record_version": 1,
+    "demo_only": true
+  },
+  {
+    "identity_key": "demo-legitimate-002",
+    "source": "SIH demonstration registry",
+    "confidence": 1.0,
+    "record_version": 1,
+    "demo_only": true
+  }
+]
