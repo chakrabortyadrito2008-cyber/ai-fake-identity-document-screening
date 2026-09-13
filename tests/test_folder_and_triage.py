@@ -18,7 +18,7 @@ def _document(path: Path):
 
 
 def test_operational_triage_labels_are_clear():
-    assert triage_result("LOW RISK", {"status": "ANALYSABLE"}, 0)["code"] == "MANUAL_VERIFICATION"
+    assert triage_result("LOW RISK", {"status": "ANALYSABLE"}, 0)["code"] == "LIKELY_GENUINE"
     assert triage_result("REVIEW REQUIRED", {"status": "ANALYSABLE"}, 30)["code"] == "MANUAL_VERIFICATION"
     assert triage_result("HIGH RISK", {"status": "ANALYSABLE"}, 70)["code"] == "LIKELY_FAKE"
     attack = EvidenceResult("liveness", "presentation_attack", DetectorStatus.DETECTED, confidence=.99, severity=32)

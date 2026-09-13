@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
-from core.result_schema import DetectorStatus, EvidenceResult
+from core.result_schema import DetectorStatus, EvidenceResult, Outcome
+
 
 class EvidenceFusion:
     """Groups dependent signals before scoring so an OCR chain is not tripled."""
@@ -21,3 +22,16 @@ class EvidenceFusion:
             total+=group_score
             summaries.append({"dependency_root":root,"score":round(group_score,2),"signals":[i.signal for i in items]})
         return min(100.0,total), summaries
+
+
+class RiskEngine:
+    """Maps a fused risk score to a screening outcome and confidence label."""
+    def __init__(self, settings: dict): self.settings=settings
+    def evaluate(self, score: float, analysable: bool, evidence_count: int) -> tuple[Outcome, str]:
+        r=self.settings["risk"]
+        # Poor image quality reduces certainty rather than creating suspicion. Strong
+        # independent artifact evidence can still be retained and escalated.
+        if not analysable and score < r["high_threshold"]: return Outcome.INSUFFICIENT, "LOW"
+        if score >= r["high_threshold"]: return Outcome.HIGH_RISK, "HIGH"
+        if score >= r["review_threshold"]: return Outcome.REVIEW, "MEDIUM"
+        return Outcome.LOW_RISK, "LOW" if evidence_count < 2 else "MEDIUM"

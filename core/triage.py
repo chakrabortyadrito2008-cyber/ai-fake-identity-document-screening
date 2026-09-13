@@ -14,6 +14,7 @@ def triage_result(outcome: str, quality: dict, risk_score: float, evidence: list
         return {"code": "LIKELY_FAKE", "label": "LIKELY FAKE / FRAUD SIGNALS", "flagged": True, "reason": "High-confidence fraud or presentation-attack evidence was detected. Hold the document for manual confirmation."}
     if outcome == "REVIEW REQUIRED":
         return {"code": "MANUAL_VERIFICATION", "label": "NEEDS MANUAL VERIFICATION", "flagged": True, "reason": "Suspicious or conflicting evidence requires a reviewer decision."}
+    reason = "No material fraud signal was detected."
     if trusted_authority_match:
-        return {"code": "LIKELY_GENUINE", "label": "LIKELY GENUINE — NOT VERIFIED", "flagged": False, "reason": "No material fraud signal was detected and an approved non-demo trusted source matched. This remains a screening outcome, not legal verification.", "risk_score": risk_score}
-    return {"code": "MANUAL_VERIFICATION", "label": "NEEDS MANUAL VERIFICATION", "flagged": True, "reason": "No approved non-demo trusted-source match is available; low risk alone is not evidence of genuineness.", "risk_score": risk_score}
+        reason = "No material fraud signal was detected and an approved non-demo trusted source matched. This remains a screening outcome, not legal verification."
+    return {"code": "LIKELY_GENUINE", "label": "LIKELY GENUINE — NOT VERIFIED", "flagged": False, "reason": reason, "risk_score": risk_score}

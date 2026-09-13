@@ -1,5 +1,5 @@
 import os
-from core.environment import load_local_env
+from core.config import load_local_env
 
 def test_local_env_does_not_override_real_environment(tmp_path, monkeypatch):
     file=tmp_path/'.env'; file.write_text('FRAUD_TEST_VALUE=file-value\n')
