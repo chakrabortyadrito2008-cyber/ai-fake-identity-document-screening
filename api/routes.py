@@ -41,7 +41,7 @@ def make_router(pipeline):
         path=pipeline.root/'config'/'system_profile.json'
         return json.loads(path.read_text(encoding='utf-8'))
     @router.get('/', include_in_schema=False)
-    def web_dashboard(): return dashboard()
+    def web_dashboard(): return dashboard(dashboard_api_key=pipeline.config["api"].get("dashboard_api_key", "") if pipeline.config["api"].get("require_api_key") else "")
     @router.get('/capabilities')
     def capabilities(): return pipeline.capabilities.report()
     @router.get('/models')
