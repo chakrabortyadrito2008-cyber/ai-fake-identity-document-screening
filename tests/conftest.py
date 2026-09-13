@@ -14,6 +14,9 @@ def pipeline_root(tmp_path: Path) -> Path:
     (root / "logs").mkdir(parents=True)
     settings=json.loads((source / "config" / "settings.json").read_text(encoding="utf-8"))
     settings["database_path"]="data/test.sqlite3"
+    # Tests run against synthetic fixtures only; never ingest the operator's
+    # real reference-database folder into an isolated test database.
+    settings["reference_database_path"]=""
     (root / "config" / "settings.json").write_text(json.dumps(settings),encoding="utf-8")
     for filename in ("identities.json","artifacts.json","verification_history.json","confirmed_cases.json"):
         (root / "data" / "synthetic_data" / filename).write_bytes((source / "data" / "synthetic_data" / filename).read_bytes())

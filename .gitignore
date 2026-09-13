@@ -12,6 +12,7 @@ __pycache__/
 logs/
 data/uploads/
 data/fraud_detection.sqlite3
+data/reference_cache.json
 data/benchmarks/
 data/autotest_*.json
 data/yunet_runtime.png

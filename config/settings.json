@@ -32,6 +32,9 @@
     "max_single_evidence": 38.0
   },
   "phash_distance_threshold": 8,
+  "near_duplicate_phash_threshold": 4,
+  "reference_phash_threshold": 6,
+  "reference_database_path": "C:/Users/Lenovo/Desktop/test_data1",
   "features": {
     "ocr": true,
     "qr": true,
@@ -52,7 +55,7 @@
   "anomaly_baseline_path": "data/demo/document_anomaly_baseline.json",
   "api": {
     "require_api_key": false,
-    "max_batch_size": 25
+    "max_batch_size": 0
   },
   "processing": {
     "max_ocr_variants": 2,

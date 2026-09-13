@@ -6,6 +6,10 @@ An offline-first, evidence-based system for screening fake identities, altered d
 
 Secure PNG/JPEG/WEBP validation, EXIF-safe preprocessing, image-quality metrics, optional Tesseract OCR, conservative document classification, candidate field extraction/format checks, QR decoding (not QR authentication), SHA-256 and pHash, SQLite provenance, cross-identity exact-artifact detection, NetworkX artifact graphs, temporal history, dependency-aware evidence fusion, structured explanations, a CLI, and a FastAPI service.
 
+## Reference database matching
+
+Set `reference_database_path` in `config/settings.json` to a folder of known-genuine document images. The folder is fingerprinted (SHA-256 + pHash) into the artifact registry at startup — idempotently, via a `data/reference_cache.json` hash cache, so only new or changed files are processed. Uploads are then matched against this corpus: a byte-exact or perceptual match produces `reference_database_match` evidence and a **LIKELY GENUINE — DATABASE MATCH** triage when no material fraud signal is present. Registered corpus documents are exempt from cross-identity reuse flags and `registry:` identities never form graph clusters, because screening a known document again is the purpose of holding it. An exact corpus match also suppresses OCR-dependent review escalations (checksum/format/region signals) on that document, since byte-exact bytes cannot have been tampered — while any independent fraud signal (deepfake, presentation attack, reuse) still escalates. Tune perceptual matching with `reference_phash_threshold` (default 6).
+
 Model-backed checks only run when their local weights are present and SHA-256 verified. The included face, liveness, deepfake and document-anomaly checks are active. The trusted-source and anomaly components currently use clearly labelled SIH demonstration data under `data/demo/`; replace these with approved records and a calibrated baseline before deployment. Missing capabilities never add risk merely because they are absent.
 
 ## Windows setup

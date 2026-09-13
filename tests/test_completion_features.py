@@ -40,6 +40,21 @@ def test_cross_document_detects_normalized_contradiction(tmp_path: Path):
     assert evidence.status == DetectorStatus.DETECTED
     assert evidence.signal == "cross_document_field_contradiction"
 
+def test_cross_document_ignores_contradictions_when_id_shows_different_person(tmp_path: Path):
+    """Same identity key but a different id_number: a DIFFERENT person reusing
+    the caller key. Their fields must not count as one person's conflicts."""
+    repository = _repository(tmp_path)
+    _record(repository, "a" * 64, "person-1", [
+        {"name": "id_number", "normalized_value": "234567891238"},
+        {"name": "name", "normalized_value": "ORIGINAL PERSON"},
+    ])
+    context = AnalysisContext(Path("document.png"), {}, fields=[
+        FieldValue("id_number", "987654321098", "987654321098", .9),
+        FieldValue("name", "Somebody Else", "SOMEBODY ELSE", .9),
+    ], submission={"identity_key": "person-1"})
+    evidence = CrossDocumentConsistency(repository).analyse(context)[0]
+    assert evidence.status == DetectorStatus.NOT_DETECTED
+
 
 def test_graph_uses_persisted_field_relationships(tmp_path: Path):
     repository = _repository(tmp_path)

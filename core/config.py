@@ -29,6 +29,7 @@ def load_settings(root: str | Path) -> dict[str, Any]:
     risk=settings["risk"]
     if not 0<=risk["review_threshold"]<risk["high_threshold"]<=100 or not 0<risk["max_single_evidence"]<=100: raise ConfigurationError("Risk thresholds must satisfy safe bounds")
     processing=settings["processing"]
-    if not 0<processing["max_ocr_variants"]<=10 or not 0<settings["api"]["max_batch_size"]<=100: raise ConfigurationError("Processing limits are outside safe bounds")
+    if not 0<processing["max_ocr_variants"]<=10: raise ConfigurationError("Processing limits are outside safe bounds")
+    if not isinstance(settings["api"]["max_batch_size"],int) or settings["api"]["max_batch_size"]<0: raise ConfigurationError("max_batch_size must be a non-negative integer (0 = unlimited)")
     if not 1<=int(processing.get("max_pdf_pages", 0))<=50 or not 72<=int(processing.get("pdf_render_dpi", 0))<=300: raise ConfigurationError("PDF processing limits are outside safe bounds")
     return settings

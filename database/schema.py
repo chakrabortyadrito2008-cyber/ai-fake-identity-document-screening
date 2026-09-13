@@ -2,6 +2,7 @@ SCHEMA_VERSION=1
 DDL="""
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS artifacts (sha256 TEXT PRIMARY KEY, phash TEXT NOT NULL, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, appearances INTEGER NOT NULL DEFAULT 0, template_reputation TEXT NOT NULL DEFAULT 'UNKNOWN');
+CREATE TABLE IF NOT EXISTS reference_documents (sha256 TEXT PRIMARY KEY, label TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS screenings (id TEXT PRIMARY KEY, sha256 TEXT NOT NULL, submitted_at TEXT NOT NULL, identity_key TEXT, outcome TEXT NOT NULL, risk_score REAL NOT NULL, result_json TEXT NOT NULL, FOREIGN KEY(sha256) REFERENCES artifacts(sha256));
 CREATE INDEX IF NOT EXISTS idx_screenings_sha ON screenings(sha256);
 CREATE INDEX IF NOT EXISTS idx_screenings_identity ON screenings(identity_key);

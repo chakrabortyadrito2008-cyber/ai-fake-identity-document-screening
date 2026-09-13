@@ -3,6 +3,7 @@ import tempfile
 import json
 from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from security.authentication import api_key_guard
 from api.enterprise_ui import dashboard
 def make_router(pipeline):
@@ -52,11 +53,16 @@ def make_router(pipeline):
     def operations_readiness(): return pipeline.self_test()["deployment_readiness"]
     @router.get('/review-queue')
     def review_queue(limit: int=100, include_resolved: bool=False): return {"items":pipeline.repo.review_queue(limit,include_resolved)}
+    @router.get('/screenings')
+    def screenings(verdict: str | None=None, limit: int=100): return pipeline.repo.screenings_page(verdict,limit)
     @router.post('/screen')
     def screen(request: Request, file: UploadFile=File(...), identity_key: str | None=Form(default=None), live_selfie: UploadFile | None=File(default=None)): return process_upload(file,identity_key,request.state.request_id,live_selfie)
     @router.post('/screen/batch')
     def batch(request: Request, files: list[UploadFile]=File(...), identity_key: str | None=Form(default=None), identity_keys_json: str | None=Form(default=None)):
-        if len(files)>pipeline.config["api"]["max_batch_size"]: raise HTTPException(413,"Batch exceeds configured item limit")
+        # max_batch_size == 0 means unlimited; a positive cap still works for
+        # operators who want to bound one request's memory usage.
+        batch_limit=pipeline.config["api"].get("max_batch_size",0)
+        if batch_limit and len(files)>batch_limit: raise HTTPException(413,"Batch exceeds configured item limit")
         keys=[identity_key]*len(files)
         if identity_keys_json:
             try: keys=json.loads(identity_keys_json)
@@ -89,6 +95,30 @@ def make_router(pipeline):
         try: return pipeline.repo.record_review_decision(screening_id,decision.upper(),reviewer,notes.strip(),request.state.request_id)
         except KeyError as exc: raise HTTPException(404,"Screening not found") from exc
         except ValueError as exc: raise HTTPException(400,str(exc)) from exc
+    @router.get('/reference/files')
+    def reference_files(limit: int=50, offset: int=0):
+        """Local-only bridge: list filenames from the configured reference folder.
+
+        Used by the dashboard to stream a folder's documents through the real
+        upload form during visible testing sessions. Serves names only — the
+        file contents are fetched individually and re-uploaded for screening.
+        """
+        from database.reference_ingest import resolve_reference_folder
+        folder=resolve_reference_folder(pipeline.root,pipeline.config)
+        if folder is None: raise HTTPException(404,"No reference folder configured")
+        names=sorted(p.name for p in folder.iterdir() if p.is_file())
+        offset=max(0,offset); limit=max(1,min(limit,500))
+        return {"folder":str(folder),"total":len(names),"files":names[offset:offset+limit]}
+    @router.get('/reference/file/{name}')
+    def reference_file(name: str):
+        """Local-only bridge: download one reference-folder file by name."""
+        from database.reference_ingest import resolve_reference_folder
+        folder=resolve_reference_folder(pipeline.root,pipeline.config)
+        if folder is None: raise HTTPException(404,"No reference folder configured")
+        safe=Path(name).name
+        path=folder/safe
+        if not path.is_file(): raise HTTPException(404,"File not found in reference folder")
+        return FileResponse(path, filename=safe)
     @router.get('/history/{sha}')
     def history(sha:str):
         artifact=pipeline.repo.artifact(sha) or {}

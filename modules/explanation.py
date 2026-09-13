@@ -9,14 +9,22 @@ def _review_actions(evidence: list[EvidenceResult]) -> list[dict]:
         actions.append({"priority": "HIGH", "action": "REQUEST_RECAPTURE", "reason": "Obtain a well-lit, sharp original image before relying on downstream checks."})
     if "exact_artifact_cross_identity_reuse" in detected:
         actions.append({"priority": "HIGH", "action": "HOLD_AND_INVESTIGATE_REUSE", "reason": "The exact file hash was previously associated with another submitted identity."})
+    if "silent_artifact_resubmission" in detected:
+        actions.append({"priority": "HIGH", "action": "HOLD_AND_INVESTIGATE_RESUBMISSION", "reason": "This exact document was previously screened; resubmitting it without identity context breaks the submission audit chain."})
+    if {"near_duplicate_artifact", "near_duplicate_cluster"} & detected:
+        actions.append({"priority": "HIGH", "action": "COMPARE_PRIOR_ARTIFACT", "reason": "A visually near-identical document exists in the database; the reviewer should compare the stored image side by side — differences are invisible in the screening evidence alone."})
+    if "same_identity_multiple_documents" in detected:
+        actions.append({"priority": "MEDIUM", "action": "VERIFY_DOCUMENT_SET", "reason": "The caller identity has multiple documents on file; confirm the set is legitimate (e.g. front and back of one document)."})
     if {"face_mismatch", "presentation_attack", "synthetic_or_deepfake_likelihood"} & detected:
         actions.append({"priority": "HIGH", "action": "MANUAL_BIOMETRIC_REVIEW", "reason": "Review source capture and compare against an approved reference; model output is supporting evidence only."})
     if {"qr_content_mismatch", "id_format_invalid", "aadhaar_template_inconsistent"} & detected:
         actions.append({"priority": "MEDIUM", "action": "CHECK_ISSUER_RECORD", "reason": "Validate the document identifier against an approved issuer or organisation source."})
+    if "reference_database_match" in detected:
+        actions.append({"priority": "LOW", "action": "NO_ACTION_DATABASE_VERIFIED", "reason": "The document matched the organisation reference database; database matching corroborates it. Standard audit-trail oversight applies."})
     if "trusted_source" in unavailable:
         actions.append({"priority": "MEDIUM", "action": "CONNECT_APPROVED_TRUSTED_SOURCE", "reason": "No organisation-approved identity source is configured for this screening."})
     if not actions:
-        actions.append({"priority": "LOW", "action": "STANDARD_REVIEW_POLICY", "reason": "No high-severity evidence was detected; retain normal human oversight and sampling."})
+        actions.append({"priority": "LOW", "action": "STANDARD_REVIEW_POLICY", "reason": "No high-severity evidence was detected; the document is auto-classified genuine with standard audit-trail oversight."})
     return actions
 
 

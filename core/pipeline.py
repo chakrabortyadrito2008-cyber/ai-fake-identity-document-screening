@@ -50,13 +50,16 @@ class FraudPipeline:
     def __init__(self, root: str | Path):
         self.root=Path(root).resolve(); load_local_env(self.root/".env"); self.config=load_settings(self.root)
         db_path=Path(self.config["database_path"]); self.db=DatabaseManager(self.root/db_path if not db_path.is_absolute() else db_path); self.repo=ScreeningRepository(self.db)
+        from database.reference_ingest import ingest_reference_database
+        self.reference=ingest_reference_database(self.root,self.config,self.repo)
+        self.config["_reference"]={"available":self.reference.get("available",False),"records":self.reference.get("records",0)}
         self.config["_root"]=str(self.root); self.capabilities=CapabilityManager(self.config,self.root)
         source_path=self.config.get("trusted_source_path","")
         path=Path(source_path)
         if source_path and not path.is_absolute(): path=self.root/path
         self.trusted_source=TrustedSource(LocalSyntheticSource.from_json(path) if source_path and path.is_file() else None)
     def _detectors(self):
-        return [InputValidator(),Preprocessor(),ImageQuality(),OCREngine(),DocumentTypeDetector(),DocumentLayout(),IdentityExtractor(),FieldConfidence(),DocumentValidator(),ChecksumValidator(),self.trusted_source,QRVerification(),SecurityFeatures(),Fingerprinting(),Forensics(),ManipulationDetection(),FaceDetection(),AadhaarTemplate(),FaceQuality(),FaceDocumentMatch(),LivenessDetection(),PresentationAttack(),DeepfakeDetection(),AnomalyDetection(),CrossDocumentConsistency(self.repo),Provenance(self.repo),ArtifactIntelligence(self.repo),GraphAnalysis(self.repo),TemporalAnalysis(self.repo),BehaviouralAnalysis(),AttackDetection(self.repo)]
+        return [InputValidator(),Preprocessor(),ImageQuality(),OCREngine(),DocumentTypeDetector(),DocumentLayout(),IdentityExtractor(),FieldConfidence(),DocumentValidator(),ChecksumValidator(),self.trusted_source,QRVerification(),SecurityFeatures(),Fingerprinting(),Forensics(),ManipulationDetection(),FaceDetection(),AadhaarTemplate(),FaceQuality(),FaceDocumentMatch(),LivenessDetection(),PresentationAttack(),DeepfakeDetection(),AnomalyDetection(),CrossDocumentConsistency(self.repo),Provenance(self.repo, near_duplicate_threshold=self.config.get("near_duplicate_phash_threshold", 4)),ArtifactIntelligence(self.repo),GraphAnalysis(self.repo),TemporalAnalysis(self.repo),BehaviouralAnalysis(),AttackDetection(self.repo)]
     def screen(self, file_path: str | Path, identity_key: str | None=None, request_id: str | None=None, reference_face_path: str | Path | None=None, live_selfie_path: str | Path | None=None) -> dict[str,Any]:
         request_id=request_id or str(uuid.uuid4()); context=AnalysisContext(Path(file_path).resolve(),self.config,submission={"identity_key":identity_key,"reference_face_path":str(reference_face_path) if reference_face_path else None,"live_selfie_path":str(live_selfie_path) if live_selfie_path else None})
         evidence=[]; quality_blocked=False
@@ -70,6 +73,10 @@ class FraudPipeline:
             if d.name=="input_validator" and any(r.status.value=="ERROR" for r in results): break
             if d.name=="preprocessing" and any(r.status==DetectorStatus.ERROR for r in results): quality_blocked=True
             if d.name=="image_quality" and (any(r.status==DetectorStatus.ERROR for r in results) or context.metadata.get("quality",{}).get("status")=="INSUFFICIENT_QUALITY"): quality_blocked=True
+        # Q1: a non-demo trusted-source MATCH on this identity key makes a prior
+        # database record a positive verification rather than a neutral fact.
+        if any(item.detector == "trusted_source" and item.value == "MATCH" and not item.details.get("demo_only", False) for item in evidence):
+            context.metadata["trusted_source_match"]=True
         score, fusion=EvidenceFusion().fuse(evidence,self.config["risk"].get("max_single_evidence"))
         quality=context.metadata.get("quality",{}); analyzable=quality.get("status") in {"ANALYSABLE","PARTIALLY_ANALYSABLE"}
         detected=[e for e in evidence if e.status.value=="DETECTED"]

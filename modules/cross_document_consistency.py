@@ -21,9 +21,16 @@ class CrossDocumentConsistency(Detector):
         if not current:
             return [EvidenceResult(self.name, "cross_document_check", DetectorStatus.INCONCLUSIVE, details={"reason": "No reliable identity fields extracted from current document"}, dependencies=["ocr"])]
         prior = self.repository.identity_field_history(identity_key)
+        # Different extracted id_number usually means a DIFFERENT person
+        # reusing a caller identity key, not one person's conflicting data.
+        current_ids = {value for name, value in current.items() if name == "id_number" and value}
+        prior_ids = {record["fields"].get("id_number") for record in prior if record["fields"].get("id_number")}
+        different_person = bool(current_ids and prior_ids and not (current_ids & prior_ids))
         contradictions = []
         comparable = {"name", "date_of_birth", "address", "phone", "id_number", "gender"}
         for record in prior:
+            if different_person:
+                continue
             for name in comparable.intersection(current).intersection(record["fields"]):
                 previous = self._normalise(name, record["fields"][name])
                 if previous and current[name] and previous != current[name]:

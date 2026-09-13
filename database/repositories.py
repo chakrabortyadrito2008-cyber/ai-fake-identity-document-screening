@@ -60,6 +60,29 @@ class ScreeningRepository:
         with self.db.connection() as c:
             row=c.execute("SELECT result_json FROM screenings WHERE id=?",(screening_id,)).fetchone()
             return json.loads(row["result_json"]) if row else None
+    def screenings_page(self, verdict: str | None = None, limit: int = 100) -> dict:
+        """Bounded newest-first listing of all screenings, optionally filtered by triage verdict."""
+        limit = max(1, min(int(limit), 500))
+        allowed = {"LIKELY_GENUINE", "LIKELY_FAKE", "MANUAL_VERIFICATION"}
+        with self.db.connection() as c:
+            counts = {row[0]: row[1] for row in c.execute("SELECT json_extract(result_json,'$.triage.code') AS code, COUNT(*) FROM screenings GROUP BY code")}
+            if verdict in allowed:
+                rows = c.execute("SELECT id, submitted_at, outcome, risk_score, result_json FROM screenings WHERE json_extract(result_json,'$.triage.code')=? ORDER BY submitted_at DESC LIMIT ?", (verdict, limit)).fetchall()
+            else:
+                rows = c.execute("SELECT id, submitted_at, outcome, risk_score, result_json FROM screenings ORDER BY submitted_at DESC LIMIT ?", (limit,)).fetchall()
+        items = []
+        for row in rows:
+            result = json.loads(row["result_json"]); triage = result.get("triage", {})
+            items.append({
+                "screening_id": row["id"], "submitted_at": row["submitted_at"],
+                "filename": result.get("filename"),
+                "triage": triage.get("label", row["outcome"]),
+                "triage_code": triage.get("code", ""),
+                "risk_score": row["risk_score"], "status": row["outcome"],
+                "document_type": (result.get("document_type") or {}).get("value"),
+                "reasons": [item.get("signal") for item in result.get("evidence", []) if item.get("status") == "DETECTED" and item.get("severity", 0) > 0][:3],
+            })
+        return {"counts": counts, "items": items}
     def review_queue(self, limit: int = 100, include_resolved: bool = False) -> list[dict]:
         """Return a bounded, privacy-minimised human-review work queue."""
         limit=max(1,min(int(limit),500))
@@ -71,12 +94,21 @@ class ScreeningRepository:
         queue=[]
         for row in rows:
             result=json.loads(row["result_json"]); triage=result.get("triage",{})
-            flagged=bool(triage.get("flagged")) or result.get("status") in {"REVIEW REQUIRED","HIGH RISK","INSUFFICIENT EVIDENCE"}
-            if not flagged or (row["decision"] and not include_resolved): continue
+            # Only undetermined (suspicious) documents await a human. Genuine and
+            # fake are automatic declarations; reviewers may still override any
+            # auto decision through record_review_decision (audit-trailed).
+            code=triage.get("code")
+            needs_human=code=="MANUAL_VERIFICATION" or (not triage and result.get("status") in {"REVIEW REQUIRED","INSUFFICIENT EVIDENCE"})
+            if not needs_human or (row["decision"] and not include_resolved): continue
+            related=[]
+            for item in result.get("evidence", []):
+                if item.get("status")=="DETECTED" and item.get("detector") in {"provenance","artifact_intelligence"}:
+                    related.extend(item.get("value",{}).get("related_sha256",[]))
             queue.append({
                 "screening_id":row["id"],"submitted_at":row["submitted_at"],"filename":result.get("filename"),
                 "triage":triage.get("label",result.get("status")),"risk_score":result.get("risk_score"),
                 "status":result.get("status"),"quality":result.get("quality",{}).get("status"),
+                "related_artifacts":related[:5],
                 "reasons":[item.get("signal") for item in result.get("evidence",[]) if item.get("status")=="DETECTED" and item.get("severity",0)>0][:4],
                 "review":{"decision":row["decision"],"reviewer_id":row["reviewer_id"],"notes":row["notes"],"decided_at":row["decided_at"]} if row["decision"] else None,
             })
@@ -100,11 +132,44 @@ class ScreeningRepository:
             decisions={row[0]:row[1] for row in c.execute("SELECT decision,COUNT(*) FROM review_decisions GROUP BY decision")}
         return {"total_screenings":total,"pending_review":len(queue),"recent_queue":queue[:8],"review_decisions":decisions,"database":"SQLite (local deployment)"}
     def similar_phashes(self, phash: str, max_distance: int, limit: int = 500) -> list[dict]:
-        """Bounded SQLite fallback; replace with a perceptual-hash index at scale."""
+        """Bounded SQLite fallback; replace with a perceptual-hash index at scale.
+
+        Same-pHash rows are retained: visually identical images with different
+        bytes (re-encodes, format changes) are exactly the near-duplicate
+        evidence reviewers need; the caller filters out the current artifact.
+        """
         with self.db.connection() as c:
             rows=[dict(r) for r in c.execute("SELECT sha256,phash,appearances,template_reputation FROM artifacts ORDER BY last_seen DESC LIMIT ?",(limit,))]
         def distance(a: str,b: str) -> int: return (int(a,16)^int(b,16)).bit_count()
-        return [r for r in rows if r["phash"]!=phash and distance(phash,r["phash"])<=max_distance]
+        return [r for r in rows if distance(phash,r["phash"])<=max_distance]
+
+    def reference_phashes(self, limit: int = 5000) -> list[dict]:
+        """Reference-corpus fingerprints for perceptual database matching."""
+        with self.db.connection() as c:
+            rows=[dict(r) for r in c.execute("SELECT a.sha256,a.phash,r.label FROM reference_documents r JOIN artifacts a ON a.sha256=r.sha256 ORDER BY r.label LIMIT ?",(max(1,min(limit,5000)),))]
+        return rows
+    def register_reference(self, sha: str, phash: str, identity_key: str, label: str) -> None:
+        """Register a reference-database document (idempotent per sha256).
+
+        Reference entries live in the same artifacts table but carry
+        `registry:`-prefixed identities and a KNOWN template reputation so
+        detectors can distinguish an official corpus record from a prior
+        screening submission.
+        """
+        now = utcnow()
+        with self.db.connection() as c:
+            c.execute("INSERT INTO artifacts(sha256,phash,first_seen,last_seen,appearances,template_reputation) VALUES(?,?,?,?,1,'KNOWN') ON CONFLICT(sha256) DO UPDATE SET last_seen=excluded.last_seen,phash=excluded.phash", (sha, phash, now, now))
+            c.execute("INSERT OR IGNORE INTO artifact_identities VALUES(?,?,?)", (sha, identity_key, now))
+            c.execute("INSERT OR IGNORE INTO reference_documents(sha256,label) VALUES(?,?)", (sha, label))
+
+    def reference_count(self) -> int:
+        with self.db.connection() as c:
+            return c.execute("SELECT COUNT(*) FROM reference_documents").fetchone()[0]
+
+    def is_reference(self, sha: str) -> bool:
+        with self.db.connection() as c:
+            return c.execute("SELECT 1 FROM reference_documents WHERE sha256=?", (sha,)).fetchone() is not None
+
     def audit(self, action: str, request_id: str | None, details: dict):
         with self.db.connection() as c:c.execute("INSERT INTO audit_events(timestamp,action,request_id,details) VALUES(?,?,?,?)",(utcnow(),action,request_id,json.dumps(details)))
     def purge_expired(self, retention_days: int) -> dict[str,int]:
