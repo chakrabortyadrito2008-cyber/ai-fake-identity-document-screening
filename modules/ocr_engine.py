@@ -14,7 +14,7 @@ class OCREngine(Detector):
             path=__import__("os").environ.get("TESSERACT_PATH")
             if path: pytesseract.pytesseract.tesseract_cmd=path
             cfg=context.config["ocr"]; runs=[]
-            variant_limit=1 if context.submission.get("analysis_mode")=="fast" else context.config["processing"]["max_ocr_variants"]
+            variant_limit=context.config["processing"]["max_ocr_variants"]
             for psm in cfg["psm"][:variant_limit]:
                 data=pytesseract.image_to_data(context.preprocessed,lang=cfg["languages"],config=f"--psm {psm}",output_type=pytesseract.Output.DICT)
                 tokens=[{"text":t,"confidence":float(x) if str(x)!="-1" else 0,"box":[data["left"][i],data["top"][i],data["width"][i],data["height"][i]]} for i,(t,x) in enumerate(zip(data["text"],data["conf"])) if t.strip()]

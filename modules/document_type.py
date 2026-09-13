@@ -15,7 +15,13 @@ class DocumentTypeDetector(Detector):
         for typ,patterns in rules.items(): scores[typ]=sum(1 for p in patterns if re.search(p,text))
         best=max(scores,key=scores.get,default="UNKNOWN"); top=scores[best]
         aadhaar_confirmed=aadhaar_brand and (aadhaar_support >= 1 or aadhaar_number)
-        typ="AADHAAR" if aadhaar_confirmed else (best if top>=2 else "UNKNOWN")
-        conf=min(.95,top/4) if typ!="UNKNOWN" else .2
+        # Stylized headers often defeat OCR brand reading (observed: "GOVERNMENTOFINDIVAS").
+        # A 12-digit number plus a government marker still identifies an Aadhaar card for
+        # validation purposes, even without the brand word, so integrity checks can run.
+        aadhaar_probable=(not aadhaar_brand) and aadhaar_number and aadhaar_support >= 1 and all(v == 0 for k, v in scores.items() if k != "AADHAAR")
+        if aadhaar_confirmed: typ="AADHAAR"
+        elif aadhaar_probable: typ="AADHAAR_PROBABLE"
+        else: typ=best if top>=2 else "UNKNOWN"
+        conf=min(.95,top/4) if typ not in {"UNKNOWN","AADHAAR_PROBABLE"} else (.5 if typ=="AADHAAR_PROBABLE" else .2)
         context.metadata["document_type"]={"value":typ,"confidence":conf,"candidate_types":scores,"reasons":"combined OCR keyword and pattern evidence"}
         return [EvidenceResult(self.name,"document_type",DetectorStatus.NOT_DETECTED,value=context.metadata["document_type"],reliability=.65,confidence=conf,dependencies=["ocr"])]

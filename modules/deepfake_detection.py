@@ -18,8 +18,6 @@ class DeepfakeDetection:
     name = "deepfake_detection"
 
     def analyse(self, context):
-        if context.submission.get("analysis_mode") == "fast":
-            return [EvidenceResult(self.name, "deepfake_deferred", DetectorStatus.NOT_APPLICABLE, details={"reason": "Deferred in fast batch mode; run full analysis for deepfake screening."})]
         model = ModelManager(context.config, context.config.get("_root", ".")).configured_models().get("deepfake_detector_v1", {})
         if not context.config["features"].get("deepfake") or not model.get("available"):
             return [EvidenceResult(self.name, "deepfake", DetectorStatus.UNAVAILABLE, details={"reason": "Deepfake ONNX model missing or integrity check failed", "model": model})]

@@ -7,7 +7,7 @@ from security.authentication import api_key_guard
 from api.enterprise_ui import dashboard
 def make_router(pipeline):
     router=APIRouter(dependencies=[Depends(api_key_guard(pipeline.config["api"]["require_api_key"]))])
-    def process_upload(upload: UploadFile, identity_key: str | None, request_id: str, analysis_mode: str = 'full', live_selfie: UploadFile | None = None):
+    def process_upload(upload: UploadFile, identity_key: str | None, request_id: str, live_selfie: UploadFile | None = None):
         suffix=Path(upload.filename or "").suffix.lower()
         if suffix not in pipeline.config["supported_extensions"]: raise HTTPException(400,"Unsupported file extension")
         if identity_key and (len(identity_key)>128 or any(ord(char)<32 for char in identity_key)): raise HTTPException(400,"Invalid identity key")
@@ -23,7 +23,7 @@ def make_router(pipeline):
                 live_data=live_selfie.file.read(pipeline.config["max_file_bytes"]+1)
                 if len(live_data)>pipeline.config["max_file_bytes"]: raise HTTPException(413,"Live-selfie file exceeds configured size limit")
                 live_path=folder/("live_selfie"+live_suffix); live_path.write_bytes(live_data)
-            result=pipeline.screen(path,identity_key,request_id,live_selfie_path=live_path,analysis_mode=analysis_mode)
+            result=pipeline.screen(path,identity_key,request_id,live_selfie_path=live_path)
             errors=[e for e in result["evidence"] if e["status"]=="ERROR"]
             if errors: raise HTTPException(400,detail={"errors":[e.get("error_category","invalid input") for e in errors]})
             return result
@@ -53,10 +53,9 @@ def make_router(pipeline):
     @router.get('/review-queue')
     def review_queue(limit: int=100, include_resolved: bool=False): return {"items":pipeline.repo.review_queue(limit,include_resolved)}
     @router.post('/screen')
-    def screen(request: Request, file: UploadFile=File(...), identity_key: str | None=Form(default=None), analysis_mode: str=Form(default='full'), live_selfie: UploadFile | None=File(default=None)): return process_upload(file,identity_key,request.state.request_id,analysis_mode,live_selfie)
+    def screen(request: Request, file: UploadFile=File(...), identity_key: str | None=Form(default=None), live_selfie: UploadFile | None=File(default=None)): return process_upload(file,identity_key,request.state.request_id,live_selfie)
     @router.post('/screen/batch')
-    def batch(request: Request, files: list[UploadFile]=File(...), identity_key: str | None=Form(default=None), identity_keys_json: str | None=Form(default=None), analysis_mode: str=Form(default='fast')):
-        if analysis_mode not in {'fast','full'}: raise HTTPException(400,'analysis_mode must be fast or full')
+    def batch(request: Request, files: list[UploadFile]=File(...), identity_key: str | None=Form(default=None), identity_keys_json: str | None=Form(default=None)):
         if len(files)>pipeline.config["api"]["max_batch_size"]: raise HTTPException(413,"Batch exceeds configured item limit")
         keys=[identity_key]*len(files)
         if identity_keys_json:
@@ -66,7 +65,7 @@ def make_router(pipeline):
         if any(key and (len(key)>128 or any(ord(char)<32 for char in key)) for key in keys): raise HTTPException(400,"Invalid identity key")
         results=[]
         for index,(item,key) in enumerate(zip(files,keys)):
-            try: results.append(process_upload(item,key,f"{request.state.request_id}:{index}",analysis_mode))
+            try: results.append(process_upload(item,key,f"{request.state.request_id}:{index}"))
             except HTTPException as exc: results.append({"request_id":f"{request.state.request_id}:{index}","filename":item.filename,"status":"INSUFFICIENT EVIDENCE","error":{"http_status":exc.status_code,"detail":exc.detail}})
         groups={}
         for index,result in enumerate(results): groups.setdefault(result.get("fingerprints",{}).get("sha256"),[]).append(index)

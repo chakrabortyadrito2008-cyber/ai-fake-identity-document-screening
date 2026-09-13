@@ -1,8 +1,7 @@
 """Resumable, privacy-conscious batch benchmark for a local image folder.
 
-Uses the fast triage path by default: every image is validated, OCR/layout/
-quality/provenance checks run and its result is persisted. Deepfake inference is
-deferred because CPU inference over hundreds of images is intentionally costly.
+Every image is fully screened: validated, OCR/layout/quality/provenance checks run
+and its result is persisted.
 """
 from __future__ import annotations
 
@@ -22,13 +21,12 @@ if str(PROJECT_ROOT) not in sys.path:
 from core.pipeline import FraudPipeline
 
 
-def report_payload(source: Path, started: str, rows: list[dict], total: int, mode: str) -> dict:
+def report_payload(source: Path, started: str, rows: list[dict], total: int) -> dict:
     return {
-        "benchmark_version": "1.0",
+        "benchmark_version": "2.0",
         "started_at": started,
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "source_folder": str(source),
-        "analysis_mode": mode,
         "total_files": total,
         "processed_files": len(rows),
         "complete": len(rows) == total,
@@ -48,7 +46,6 @@ def write_report(path: Path, payload: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a resumable document-folder benchmark")
     parser.add_argument("folder")
-    parser.add_argument("--mode", choices=("fast", "full"), default="fast")
     parser.add_argument("--report", default="data/benchmarks/aadhaar_generated_benchmark.json")
     parser.add_argument("--checkpoint-every", type=int, default=10)
     args = parser.parse_args()
@@ -75,7 +72,6 @@ def main() -> None:
                 path,
                 identity_key=f"benchmark:aadhaar-generated:{path.stem}",
                 request_id=f"benchmark:{path.name}",
-                analysis_mode=args.mode,
             )
             template = next((item for item in result["evidence"] if item["detector"] == "aadhaar_template"), {})
             rows.append({
@@ -93,7 +89,7 @@ def main() -> None:
         except Exception as exc:
             rows.append({"filename": path.name, "triage": "NEEDS MANUAL VERIFICATION", "status": "INSUFFICIENT EVIDENCE", "risk_score": None, "document_type": "UNKNOWN", "quality": "ERROR", "aadhaar_template": None, "detected_signals": [], "error": type(exc).__name__, "elapsed_seconds": round(time.monotonic() - item_started, 2)})
         if index % args.checkpoint_every == 0 or index == len(pending):
-            payload = report_payload(source, started, rows, len(files), args.mode)
+            payload = report_payload(source, started, rows, len(files))
             payload["elapsed_seconds"] = round(time.monotonic() - overall_started, 2)
             write_report(report_path, payload)
             print(f"Checkpoint: {len(rows)}/{len(files)} processed", flush=True)
